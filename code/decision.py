@@ -153,8 +153,7 @@ def travel_state(Rover):
             Rover.mode = 'break_loop'
         elif finish_collecting(Rover):
             Rover.mode = 'return_home'
-        else:
-            Rover.status = 'here'
+        else:        
             if is_near_front_wall(Rover):
                 maintain_moderate_speed(Rover)
                 if not is_too_close_to_right_wall(Rover):
@@ -176,10 +175,13 @@ def travel_state(Rover):
                     crawl_to_left_wall(Rover)
     elif Rover.mode == 'break_loop':
         Rover.steer = 0
-        if is_near_front_wall(Rover):
+        if is_stuck(Rover):
             Rover.mode = 'travel'
         else:
-            maintain_high_speed(Rover)
+            if is_near_front_wall(Rover):
+                Rover.mode = 'travel'
+            else:
+                maintain_high_speed(Rover)
             
 
     return Rover
@@ -198,12 +200,14 @@ def spin_back(Rover):
     Rover.brake = 0
     
     if Rover.spin_back_counter == 0:
-        Rover.throttle = random.choice([0, -0.2, -0.3])
-        Rover.steer = random.choice([-5, -10, -15, -20, 5, 10, 15, 20])
-        Rover.spin_back_counter = random.choice([70, 100, 200, 300])
+        Rover.throttle = random.choice([0, 0, 0, 0, -0.1, -0.2, -0.3, -0.4]) # more chance for it to turn around without moving
+        Rover.steer = random.choice([-15, -10, -5, 5, 10, 15])
+        Rover.spin_back_counter = random.choice([50, 100, 200, 300, 500])
     
     if Rover.spin_back_counter > 0:
         Rover.spin_back_counter -= 1
+        # if is_stuck(Rover): # if stuck while reversing, then go forward instead
+        #     Rover.throttle *= -1
         
     if Rover.spin_back_counter == 0:
         Rover.throttle = 0
@@ -212,21 +216,43 @@ def spin_back(Rover):
     else:
         return False    
 
-def is_stuck(Rover):
-    if abs(Rover.vel) < 0.1:
-        if Rover.throttle != 0:
-            Rover.unmoveable_counter += 1
+def is_stuck(Rover, dist = None):
+    if Rover.marked_pos is None:
+        Rover.marked_pos = Rover.pos
+        Rover.unmoveable_counter = 200
 
-    if Rover.unmoveable_counter > 100:
-        Rover.unmoveable_counter = 0
-        return True
-    else:
-        if Rover.throttle == 0:
-            Rover.unmoveable_counter = 0 
-        return False
+    if Rover.unmoveable_counter > 0:
+         Rover.unmoveable_counter -= 1
+         return False # not enough time to know if it's stuck yet, so assume not
+    else: 
+        # waited long enough for unmoveable_counter to get down to zero,
+        # now calculate if it moved anywhere ever since.        
+        delta_x = Rover.pos[0] - Rover.marked_pos[0]
+        delta_y = Rover.pos[1] - Rover.marked_pos[1]
+
+        Rover.marked_pos = None
+        if dist is None:
+            dist = 0.05
+        return abs(delta_x) < dist and abs(delta_y) < dist # == true if it didn't move much
+
+
+    # if abs(Rover.vel) < 0.1:
+    #     if Rover.throttle != 0:
+    #         Rover.unmoveable_counter += 1
+
+    # if Rover.unmoveable_counter > 100:
+    #     Rover.unmoveable_counter = 0
+    #     return True
+    # else:
+    #     if Rover.throttle == 0:
+    #         Rover.unmoveable_counter = 0 
+    #     return False
 
 def is_circling(Rover):
-    if Rover.previous_steer is not None and Rover.previous_steer == Rover.steer:
+    if Rover.steer == 0:
+        return False
+
+    if  Rover.previous_steer is not None and Rover.previous_steer == Rover.steer:
         Rover.continuous_steer_counter += 1
     else:
         Rover.previous_steer = Rover.steer
@@ -322,7 +348,7 @@ def maintain_slow_speed(Rover):
         Rover.brake = Rover.brake_set
 
 def steer_toward_sample(Rover):
-    if len(Rover.rock_angles) > 0:
+    if Rover.rock_size > 0:
         Rover.steer = np.clip(Rover.rock_angle, -15, 15)
         return False
     else:
@@ -344,7 +370,7 @@ def get_in_pickup_zone(Rover):
         if brake_until_stop(Rover):
             return True
     else:
-        if is_stuck(Rover):
+        if is_stuck(Rover, 0.01): # minium delta distance is lower than default 0.05 since it's moving slower
             Rover.mode = 'unstuck_on_pickup'            
         else:
             if is_near_pickup_zone(Rover):
@@ -352,12 +378,6 @@ def get_in_pickup_zone(Rover):
             else:
                 maintain_moderate_speed(Rover)
             
-            # if is_too_close_to_left_wall(Rover):
-            #     steer_right(Rover)
-            #     if is_too_close_to_front_wall(Rover):
-            #         if brake_until_stop(Rover):
-            #             steer_right(Rover)
-            # else:
             steer_toward_sample(Rover)
                   
     return False

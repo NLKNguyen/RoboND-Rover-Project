@@ -79,19 +79,27 @@ class RoverState():
                 
         # Add-on attributes
         self.starting_pos = None
-        self.left_wall_distance = 0
+        
         self.front_wall_distance = 0
-
-        self.rock_angles = None
+        self.left_wall_distance  = 0
+        self.right_wall_distance = 0
+        
+        self.rock_size = None
         self.rock_angle = None
-        self.rock_pos = None
+        self.rock_pos = None 
+    
+        # to keep track of the targetted rock in case it is out of sight.
         self.target_rock_pos = None
                 
+        # to detect if it gets stuck
+        self.marked_pos = None
         self.unmoveable_counter = 0
 
+        # to detect if it is circling
         self.continuous_steer_counter = 0
         self.previous_steer = None
 
+        # to keep track of how long it is reversing and turning
         self.spin_back_counter = 0
 
         self.status = ''
