@@ -11,7 +11,7 @@
 [stuck3]: ./misc/stuck3.png
 [config]: ./misc/config.png
 [process]: ./misc/process.png
-[states]: ./misc/states.svg
+[states]: ./misc/states.png
 
 
 
